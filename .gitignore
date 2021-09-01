@@ -108,4 +108,5 @@ state.json
 # project specific
 generate_schema.py
 *config.json
+tap_config.json
 catalog*.json
