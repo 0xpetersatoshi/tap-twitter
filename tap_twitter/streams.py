@@ -8,7 +8,7 @@ import requests
 import singer
 from singer import Transformer, metrics
 
-from tap_twitter.client import Client
+from tap_twitter.client import Client, TwitterClientError
 
 
 LOGGER = singer.get_logger()
@@ -143,16 +143,15 @@ class SearchTweets(IncrementalStream):
     """
     tap_stream_id = 'search_tweets'
     key_properties = ['id']
-    replication_key = 'end_time'
+    replication_key = 'created_at'
     key_properties = ['id']
-    valid_replication_keys = ['end_time']
+    valid_replication_keys = ['created_at']
 
     def get_records(self, start_date, config=None, is_parent=False):
 
         start_time = date_to_rfc3339(start_date)
-        # 'end_time' must be a minimum of 10 seconds prior to the request time.
-        end_time = (singer.utils.now() - timedelta(seconds=10)).isoformat()
         query = config.get("tweet_search_query")
+        tweet_fields = self.get_tweet_fields()
         next_token = None
         paginate = True
 
@@ -160,20 +159,51 @@ class SearchTweets(IncrementalStream):
 
             params = {
                 'query': query,
+                'tweet.fields': tweet_fields,
                 'start_time': start_time,
-                'end_time': end_time,
                 'next_token': next_token,
                 'max_results': 100,
             }
 
             response = self.client.get_recent_tweets(params)
 
-            data = response.get('data')
             next_token = response.get('meta', {}).get('next_token')
+            data = response.get('data')
+
+            # Throw error if there are any errors in response
+            if not data and response.get('errors'):
+                errors = response.get('errors')
+                error_message = f"{errors[0].get('title')}: {errors[0].get('detail')}"
+
+                raise TwitterClientError(message=error_message)
 
             paginate = next_token is not None
 
-            yield from ({'end_time': end_time, **tweet} for tweet in data)
+            yield from data
+
+    @staticmethod
+    def get_tweet_fields():
+        """Format as query string parameters the tweet fields to be returned"""
+        fields = [
+            "author_id",
+            "conversation_id",
+            "created_at",
+            "geo",
+            "in_reply_to_user_id",
+            "lang",
+            "public_metrics",
+            "referenced_tweets",
+            "reply_settings",
+            "source",
+            "text",
+            "attachments",
+            "context_annotations",
+            "entities",
+            "possibly_sensitive",
+            "withheld",
+        ]
+
+        return ",".join(fields)
 
 
 STREAMS = {

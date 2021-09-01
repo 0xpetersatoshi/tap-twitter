@@ -107,3 +107,5 @@ state.json
 
 # project specific
 generate_schema.py
+*config.json
+catalog*.json
