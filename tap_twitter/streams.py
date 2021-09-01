@@ -1,15 +1,8 @@
-import csv
-from datetime import datetime, timedelta
-from tap_twitter.helpers import date_to_rfc3339
-import time
-from typing import Any, Iterator
-
-import requests
 import singer
 from singer import Transformer, metrics
 
 from tap_twitter.client import Client, TwitterClientError
-
+from tap_twitter.helpers import date_to_rfc3339
 
 LOGGER = singer.get_logger()
 
@@ -151,7 +144,7 @@ class SearchTweets(IncrementalStream):
 
         start_time = date_to_rfc3339(start_date)
         query = config.get("tweet_search_query")
-        tweet_fields = self.get_tweet_fields()
+        tweet_fields = self.get_tweet_fields(config)
         next_token = None
         max_results = 100
         result_count = max_results
@@ -183,28 +176,16 @@ class SearchTweets(IncrementalStream):
             yield from data
 
     @staticmethod
-    def get_tweet_fields():
+    def get_tweet_fields(config: dict) -> str:
         """Format as query string parameters the tweet fields to be returned"""
-        fields = [
-            "author_id",
-            "conversation_id",
-            "created_at",
-            "geo",
-            "in_reply_to_user_id",
-            "lang",
-            "public_metrics",
-            "referenced_tweets",
-            "reply_settings",
-            "source",
-            "text",
-            "attachments",
-            "context_annotations",
-            "entities",
-            "possibly_sensitive",
-            "withheld",
-        ]
+        fields = config.get('tweet_search_fields')
 
-        return ",".join(fields)
+        # If no fields provided, return 'created_at' as default
+        if not fields:
+            return "created_at"
+
+        # Clean up any blank spaces
+        return ",".join(map(str.strip, fields.split(",")))
 
 
 STREAMS = {
