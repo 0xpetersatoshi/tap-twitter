@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime, timedelta
 from tap_twitter.helpers import date_to_rfc3339
 import time
 from typing import Any, Iterator
@@ -136,27 +137,45 @@ class FullTableStream(BaseStream):
         return state
 
 
-class SearchTweets(FullTableStream):
+class SearchTweets(IncrementalStream):
     """
     Gets records for a sample stream.
     """
     tap_stream_id = 'search_tweets'
     key_properties = ['id']
+    replication_key = 'end_time'
+    key_properties = ['id']
+    valid_replication_keys = ['end_time']
 
     def get_records(self, start_date, config=None, is_parent=False):
 
         start_time = date_to_rfc3339(start_date)
+        # 'end_time' must be a minimum of 10 seconds prior to the request time.
+        end_time = (singer.utils.now() - timedelta(seconds=10)).isoformat()
+        query = config.get("tweet_search_query")
+        next_token = None
+        paginate = True
 
-        params = {
-            'query': config.get("tweet_search_query"),
-            'start_time': start_time
-        }
+        while paginate:
 
-        response = self.client.get_recent_tweets(params)
+            params = {
+                'query': query,
+                'start_time': start_time,
+                'end_time': end_time,
+                'next_token': next_token,
+                'max_results': 100,
+            }
 
-        yield from response.get('data')
+            response = self.client.get_recent_tweets(params)
+
+            data = response.get('data')
+            next_token = response.get('meta', {}).get('next_token')
+
+            paginate = next_token is not None
+
+            yield from ({'end_time': end_time, **tweet} for tweet in data)
 
 
 STREAMS = {
-    'sample_stream': SearchTweets,
+    'search_tweets': SearchTweets,
 }

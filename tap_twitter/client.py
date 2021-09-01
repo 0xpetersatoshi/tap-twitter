@@ -82,7 +82,8 @@ def raise_for_error(resp: requests.Response):
             error_code = resp.status_code
             client_exception = ERROR_CODE_EXCEPTION_MAPPING.get(error_code, {})
             exc = client_exception.get('raise_exception', TwitterClientError)
-            message = client_exception.get('message', 'Client Error')
+            error_message = resp.json().get('errors', [{}])[0].get('message')
+            message = error_message or client_exception.get('message', 'Client Error')
 
             raise exc(message, resp) from None
 
@@ -146,6 +147,7 @@ class Client:
             response = session.request(method, url, headers=headers, params=params, data=data)
 
             if response.status_code != 200:
+                LOGGER.critical(f"error: {response.json()}")
                 raise_for_error(response)
                 return None
 

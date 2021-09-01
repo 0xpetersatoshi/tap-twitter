@@ -104,3 +104,6 @@ state.json
 
 # VSCode
 .vscode
+
+# project specific
+generate_schema.py
