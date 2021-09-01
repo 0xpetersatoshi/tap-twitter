@@ -153,21 +153,24 @@ class SearchTweets(IncrementalStream):
         query = config.get("tweet_search_query")
         tweet_fields = self.get_tweet_fields()
         next_token = None
-        paginate = True
+        max_results = 100
+        result_count = max_results
 
-        while paginate:
+        while result_count == max_results:
 
             params = {
                 'query': query,
                 'tweet.fields': tweet_fields,
                 'start_time': start_time,
                 'next_token': next_token,
-                'max_results': 100,
+                'max_results': max_results,
             }
 
             response = self.client.get_recent_tweets(params)
 
-            next_token = response.get('meta', {}).get('next_token')
+            meta = response.get('meta', {})
+            next_token = meta.get('next_token')
+            result_count = meta.get('result_count')
             data = response.get('data')
 
             # Throw error if there are any errors in response
@@ -176,8 +179,6 @@ class SearchTweets(IncrementalStream):
                 error_message = f"{errors[0].get('title')}: {errors[0].get('detail')}"
 
                 raise TwitterClientError(message=error_message)
-
-            paginate = next_token is not None
 
             yield from data
 
