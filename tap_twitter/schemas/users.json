@@ -1,0 +1,214 @@
+{
+  "type": [
+    "null",
+    "object"
+  ],
+  "properties": {
+    "url": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "name": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "id": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "profile_image_url": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "public_metrics": {
+      "type": [
+        "null",
+        "object"
+      ],
+      "properties": {
+        "followers_count": {
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "following_count": {
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "tweet_count": {
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "listed_count": {
+          "type": [
+            "null",
+            "integer"
+          ]
+        }
+      }
+    },
+    "created_at": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": [
+        "null",
+        "string"
+      ],
+      "format": "date-time"
+    },
+    "verified": {
+      "type": [
+        "null",
+        "boolean"
+      ]
+    },
+    "description": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "protected": {
+      "type": [
+        "null",
+        "boolean"
+      ]
+    },
+    "username": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "location": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "pinned_tweet_id": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "entities": {
+      "type": [
+        "null",
+        "object"
+      ],
+      "properties": {
+        "url": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "urls": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "start": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "end": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "url": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "expanded_url": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "display_url": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "cashtags": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "start": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "end": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "tag": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,7 @@
 {
-  "username": "my_username",
-  "password": "my_password",
-  "start_date": "2017-01-01T00:00:00Z"
+  "api_token": "token12345",
+  "start_date": "2021-08-31",
+  "tweet_search_query": "#Somehastag @SomeAccount",
+  "tweet_search_fields": "author_id,conversation_id,created_at,geo,in_reply_to_user_id,lang,public_metrics,referenced_tweets,reply_settings,source,text,attachments,context_annotations,entities,possibly_sensitive,withheld",
+  "user_fields": "created_at,description,entities,id,location,name,pinned_tweet_id,profile_image_url,protected,public_metrics,url,username,verified,withheld"
 }

@@ -164,3 +164,7 @@ class Client:
     def get_recent_tweets(self, params=None):
         endpoint = "/2/tweets/search/recent"
         return self.get(endpoint, params)
+
+    def get_users(self, params=None):
+        endpoint = "/2/users"
+        return self.get(endpoint, params)

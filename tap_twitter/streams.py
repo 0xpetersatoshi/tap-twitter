@@ -42,7 +42,7 @@ class BaseStream:
         """
         self.params = params
 
-    def get_parent_data(self, config: dict = None) -> list:
+    def get_parent_data(self, start_date: str = None, config: dict = None) -> list:
         """
         Returns a list of records from the parent stream.
 
@@ -50,7 +50,7 @@ class BaseStream:
         :return: A list of records
         """
         parent = self.parent(self.client)
-        return parent.get_records(config, is_parent=True)
+        return parent.get_records(start_date, config, is_parent=True)
 
 
 class IncrementalStream(BaseStream):
@@ -132,7 +132,7 @@ class FullTableStream(BaseStream):
 
 class SearchTweets(IncrementalStream):
     """
-    Gets records for a sample stream.
+    Gets recent tweets (max last 7 days) based on search query.
     """
     tap_stream_id = 'search_tweets'
     key_properties = ['id']
@@ -173,14 +173,55 @@ class SearchTweets(IncrementalStream):
 
                 raise TwitterClientError(message=error_message)
 
-            yield from data
+            if is_parent:
+                yield (tweet['author_id'] for tweet in data)
+            else:
+                yield from data
 
     @staticmethod
     def get_tweet_fields(config: dict) -> str:
         """Format as query string parameters the tweet fields to be returned"""
         fields = config.get('tweet_search_fields')
 
-        # If no fields provided, return 'created_at' as default
+        # If no fields provided, return 'created_at' and 'author_id' as default
+        if not fields:
+            return "created_at,author_id"
+
+        # Clean up any blank spaces
+        return ",".join(map(str.strip, fields.split(",")))
+
+
+class Users(IncrementalStream):
+    tap_stream_id = 'users'
+    key_properties = ['id']
+    replication_key = 'updated_at'
+    key_properties = ['id']
+    valid_replication_keys = ['updated_at']
+    parent = SearchTweets
+
+    def get_records(self, start_date: str, config: dict, is_parent: bool = False) -> list:
+
+        user_fields = self.get_user_fields(config)
+
+        for authors in self.get_parent_data(start_date=start_date, config=config):
+            author_ids = ','.join(authors)
+            params = {
+                'ids': author_ids,
+                'user.fields': user_fields
+            }
+
+            response = self.client.get_users(params)
+
+            data = response.get('data')
+
+            yield from ({'updated_at': start_date, **author} for author in data)
+
+    @staticmethod
+    def get_user_fields(config: dict) -> str:
+        """Format as query string parameters the user fields to be returned"""
+        fields = config.get('user_fields')
+
+        # If no fields provided, return 'created_at' and 'author_id' as default
         if not fields:
             return "created_at"
 
@@ -190,4 +231,5 @@ class SearchTweets(IncrementalStream):
 
 STREAMS = {
     'search_tweets': SearchTweets,
+    'users': Users,
 }

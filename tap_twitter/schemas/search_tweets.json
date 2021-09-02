@@ -236,7 +236,8 @@
       "type": [
         "null",
         "string"
-      ]
+      ],
+      "format": "date-time"
     },
     "attachments": {
       "type": [
