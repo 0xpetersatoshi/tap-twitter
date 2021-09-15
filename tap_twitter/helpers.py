@@ -19,6 +19,6 @@ def get_bookmark_or_max_date(date: str, lookback_days=7) -> str:
     max_lookback_date = now - datetime.timedelta(days=lookback_days)
 
     if singer.utils.strptime_to_utc(date) < max_lookback_date:
-        return (max_lookback_date + datetime.timedelta(seconds=30)).isoformat()
+        return (max_lookback_date + datetime.timedelta(seconds=3600)).isoformat()
     else:
         return date
