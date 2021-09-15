@@ -2,7 +2,7 @@ import singer
 from singer import Transformer, metrics
 
 from tap_twitter.client import Client, TwitterClientError
-from tap_twitter.helpers import date_to_rfc3339
+from tap_twitter.helpers import date_to_rfc3339, get_bookmark_or_max_date
 
 LOGGER = singer.get_logger()
 
@@ -142,6 +142,7 @@ class SearchTweets(IncrementalStream):
 
     def get_records(self, start_date, config=None, is_parent=False):
 
+        start_date = get_bookmark_or_max_date(start_date)
         start_time = date_to_rfc3339(start_date)
         query = config.get("tweet_search_query")
         tweet_fields = self.get_tweet_fields(config)
