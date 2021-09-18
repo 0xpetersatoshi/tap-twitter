@@ -6,6 +6,9 @@ from tap_twitter.helpers import date_to_rfc3339, get_bookmark_or_max_date
 
 LOGGER = singer.get_logger()
 
+class TapConfigException:
+    pass
+
 class BaseStream:
     """
     A base class representing singer streams.
@@ -144,40 +147,46 @@ class SearchTweets(IncrementalStream):
 
         start_date = get_bookmark_or_max_date(start_date)
         start_time = date_to_rfc3339(start_date)
-        query = config.get("tweet_search_query")
         tweet_fields = self.get_tweet_fields(config)
-        next_token = None
-        max_results = 100
-        result_count = max_results
+        queries = config.get("tweet_search_query")
 
-        while result_count == max_results:
+        if not isinstance(queries, list):
+            raise TapConfigException
 
-            params = {
-                'query': query,
-                'tweet.fields': tweet_fields,
-                'start_time': start_time,
-                'next_token': next_token,
-                'max_results': max_results,
-            }
+        for query in queries:
+            next_token = None
+            max_results = 100
+            result_count = max_results
 
-            response = self.client.get_recent_tweets(params)
+            LOGGER.info(f"Running query for: {query}")
+            while result_count == max_results:
 
-            meta = response.get('meta', {})
-            next_token = meta.get('next_token')
-            result_count = meta.get('result_count')
-            data = response.get('data')
+                params = {
+                    'query': query,
+                    'tweet.fields': tweet_fields,
+                    'start_time': start_time,
+                    'next_token': next_token,
+                    'max_results': max_results,
+                }
 
-            # Throw error if there are any errors in response
-            if not data and response.get('errors'):
-                errors = response.get('errors')
-                error_message = f"{errors[0].get('title')}: {errors[0].get('detail')}"
+                response = self.client.get_recent_tweets(params)
 
-                raise TwitterClientError(message=error_message)
+                meta = response.get('meta', {})
+                next_token = meta.get('next_token')
+                result_count = meta.get('result_count')
+                data = response.get('data')
 
-            if is_parent:
-                yield (tweet['author_id'] for tweet in data)
-            else:
-                yield from data
+                # Throw error if there are any errors in response
+                if not data and response.get('errors'):
+                    errors = response.get('errors')
+                    error_message = f"{errors[0].get('title')}: {errors[0].get('detail')}"
+
+                    raise TwitterClientError(message=error_message)
+
+                if is_parent:
+                    yield (tweet['author_id'] for tweet in data)
+                else:
+                    yield from data
 
     @staticmethod
     def get_tweet_fields(config: dict) -> str:
