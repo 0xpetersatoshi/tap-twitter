@@ -147,7 +147,7 @@ class Client:
             response = session.request(method, url, headers=headers, params=params, data=data)
 
             if response.status_code != 200:
-                LOGGER.critical(f"error: {response.json()}")
+                LOGGER.critical(f"error: {response}")
                 raise_for_error(response)
                 return None
 
