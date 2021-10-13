@@ -85,6 +85,8 @@ def raise_for_error(resp: requests.Response):
             error_message = resp.json().get('errors', [{}])[0].get('message')
             message = error_message or client_exception.get('message', 'Client Error')
 
+            LOGGER.critical(f"error_code={error_code} message={message}")
+
             raise exc(message, resp) from None
 
         except (ValueError, TypeError):
@@ -92,15 +94,11 @@ def raise_for_error(resp: requests.Response):
 
 
 def retry_after_wait_gen():
-    """
-    Returns a generator that is passed to backoff decorator to indicate how long
-    to backoff for in seconds.
-    """
-    max_value = 300
-    n = 10
-    while n <= max_value:
-        yield n
-        n += 10
+    while True:
+        # Twitter API rate limit is quoted in 15 min windows
+        sleep_time = 15*60
+        LOGGER.info(f"API rate limit exceeded -- sleeping for %s seconds", sleep_time)
+        yield sleep_time
 
 
 class Client:
@@ -131,7 +129,8 @@ class Client:
         """
         return self._make_request(url, method='POST', headers=headers, params=params, data=data)
 
-    @backoff.on_exception(retry_after_wait_gen, TwitterClient429Error, jitter=None, max_tries=10)
+    @backoff.on_exception(backoff.expo, requests.exceptions.ReadTimeout, jitter=None, max_tries=3)
+    @backoff.on_exception(retry_after_wait_gen, TwitterClient429Error, jitter=None, max_tries=3)
     def _make_request(self, url, method, headers=None, params=None, data=None) -> dict:
         """
         Makes the API request.
