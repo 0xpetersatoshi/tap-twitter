@@ -82,6 +82,8 @@ def raise_for_error(resp: requests.Response):
             error_code = resp.status_code
             client_exception = ERROR_CODE_EXCEPTION_MAPPING.get(error_code, {})
             exc = client_exception.get('raise_exception', TwitterClientError)
+            if error_code == 429:
+                raise exc(client_exception.get('message', '429 Too many requests'), resp) from None
             error_message = resp.json().get('errors', [{}])[0].get('message')
             message = error_message or client_exception.get('message', 'Client Error')
 
