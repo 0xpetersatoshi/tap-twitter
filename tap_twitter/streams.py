@@ -23,12 +23,14 @@ class BaseStream:
     key_properties = []
     valid_replication_keys = []
     params = {}
+    config = {}
     parent = None
 
-    def __init__(self, client: Client):
+    def __init__(self, client: Client, config: dict):
         self.client = client
+        self.config = config
 
-    def get_records(self, config: dict = None, is_parent: bool = False) -> list:
+    def get_records(self, start_date: str, is_parent: bool = False) -> list:
         """
         Returns a list of records for that stream.
 
@@ -47,15 +49,15 @@ class BaseStream:
         """
         self.params = params
 
-    def get_parent_data(self, start_date: str = None, config: dict = None) -> list:
+    def get_parent_data(self, start_date: str = None) -> list:
         """
         Returns a list of records from the parent stream.
 
         :param config: The tap config file
         :return: A list of records
         """
-        parent = self.parent(self.client)
-        return parent.get_records(start_date, config, is_parent=True)
+        parent = self.parent(self.client, self.config)
+        return parent.get_records(start_date, is_parent=True)
 
 
 class IncrementalStream(BaseStream):
@@ -68,26 +70,25 @@ class IncrementalStream(BaseStream):
     replication_method = 'INCREMENTAL'
     batched = False
 
-    def __init__(self, client):
-        super().__init__(client)
+    def __init__(self, client, config):
+        super().__init__(client, config)
 
-    def sync(self, state: dict, stream_schema: dict, stream_metadata: dict, config: dict, transformer: Transformer) -> dict:
+    def sync(self, state: dict, stream_schema: dict, stream_metadata: dict, transformer: Transformer) -> dict:
         """
         The sync logic for an incremental stream.
 
         :param state: A dictionary representing singer state
         :param stream_schema: A dictionary containing the stream schema
         :param stream_metadata: A dictionnary containing stream metadata
-        :param config: A dictionary containing tap config data
         :param transformer: A singer Transformer object
         :return: State data in the form of a dictionary
         """
-        start_date = singer.get_bookmark(state, self.tap_stream_id, self.replication_key, config['start_date'])
+        start_date = singer.get_bookmark(state, self.tap_stream_id, self.replication_key, self.config['start_date'])
         bookmark_datetime = singer.utils.strptime_to_utc(start_date)
         max_datetime = bookmark_datetime
 
         with metrics.record_counter(self.tap_stream_id) as counter:
-            for record in self.get_records(start_date, config):
+            for record in self.get_records(start_date):
                 transformed_record = transformer.transform(record, stream_schema, stream_metadata)
                 record_datetime = singer.utils.strptime_to_utc(transformed_record[self.replication_key])
                 if record_datetime >= bookmark_datetime or self.tap_stream_id == 'users':
@@ -111,22 +112,21 @@ class FullTableStream(BaseStream):
     """
     replication_method = 'FULL_TABLE'
 
-    def __init__(self, client):
-        super().__init__(client)
+    def __init__(self, client, config):
+        super().__init__(client, config)
 
-    def sync(self, state: dict, stream_schema: dict, stream_metadata: dict, config: dict, transformer: Transformer) -> dict:
+    def sync(self, state: dict, stream_schema: dict, stream_metadata: dict, transformer: Transformer) -> dict:
         """
         The sync logic for an full table stream.
 
         :param state: A dictionary representing singer state
         :param stream_schema: A dictionary containing the stream schema
         :param stream_metadata: A dictionnary containing stream metadata
-        :param config: A dictionary containing tap config data
         :param transformer: A singer Transformer object
         :return: State data in the form of a dictionary
         """
         with metrics.record_counter(self.tap_stream_id) as counter:
-            for record in self.get_records(config):
+            for record in self.get_records():
                 transformed_record = transformer.transform(record, stream_schema, stream_metadata)
                 singer.write_record(self.tap_stream_id, transformed_record)
                 counter.increment()
@@ -146,12 +146,12 @@ class SearchTweets(IncrementalStream):
     valid_replication_keys = ['created_at']
 
     @lru_cache()
-    def get_records(self, start_date, config=None, is_parent=False):
+    def get_records(self, start_date, is_parent=False):
 
         start_date = get_bookmark_or_max_date(start_date)
         start_time = date_to_rfc3339(start_date)
-        tweet_fields = self.get_tweet_fields(config)
-        queries = config.get("tweet_search_query")
+        tweet_fields = self.get_tweet_fields()
+        queries = self.config.get("tweet_search_query")
 
         if not isinstance(queries, list):
             raise TapConfigException
@@ -180,6 +180,7 @@ class SearchTweets(IncrementalStream):
 
                 loop = True if next_token is not None else False
 
+
                 # Throw error if there are any errors in response
                 if not data and response.get('errors'):
                     errors = response.get('errors')
@@ -192,10 +193,9 @@ class SearchTweets(IncrementalStream):
                 else:
                     yield from data
 
-    @staticmethod
-    def get_tweet_fields(config: dict) -> str:
+    def get_tweet_fields(self) -> str:
         """Format as query string parameters the tweet fields to be returned"""
-        fields = config.get('tweet_search_fields')
+        fields = self.config.get('tweet_search_fields')
 
         # If no fields provided, return 'created_at' and 'author_id' as default
         if not fields:
@@ -213,11 +213,11 @@ class Users(IncrementalStream):
     valid_replication_keys = ['updated_at']
     parent = SearchTweets
 
-    def get_records(self, start_date: str, config: dict, is_parent: bool = False) -> list:
+    def get_records(self, start_date: str, is_parent: bool = False) -> list:
 
-        user_fields = self.get_user_fields(config)
+        user_fields = self.get_user_fields()
 
-        for authors in self.get_parent_data(start_date=start_date, config=config):
+        for authors in self.get_parent_data(start_date=start_date):
             author_ids = ','.join(authors)
             params = {
                 'ids': author_ids,
@@ -230,10 +230,9 @@ class Users(IncrementalStream):
 
             yield from ({'updated_at': start_date, **author} for author in data)
 
-    @staticmethod
-    def get_user_fields(config: dict) -> str:
+    def get_user_fields(self) -> str:
         """Format as query string parameters the user fields to be returned"""
-        fields = config.get('user_fields')
+        fields = self.config.get('user_fields')
 
         # If no fields provided, return 'created_at' and 'author_id' as default
         if not fields:
