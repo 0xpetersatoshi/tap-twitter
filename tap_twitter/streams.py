@@ -90,7 +90,7 @@ class IncrementalStream(BaseStream):
             for record in self.get_records(start_date, config):
                 transformed_record = transformer.transform(record, stream_schema, stream_metadata)
                 record_datetime = singer.utils.strptime_to_utc(transformed_record[self.replication_key])
-                if record_datetime >= bookmark_datetime:
+                if record_datetime >= bookmark_datetime or self.tap_stream_id == 'users':
                     singer.write_record(self.tap_stream_id, transformed_record)
                     counter.increment()
                     max_datetime = max(record_datetime, max_datetime)
