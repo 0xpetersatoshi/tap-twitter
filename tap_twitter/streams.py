@@ -156,10 +156,10 @@ class SearchTweets(IncrementalStream):
         for query in queries:
             next_token = None
             max_results = 100
-            result_count = max_results
+            loop = True
 
             LOGGER.info(f"Running query for: {query}")
-            while result_count == max_results:
+            while loop:
 
                 params = {
                     'query': query,
@@ -173,8 +173,9 @@ class SearchTweets(IncrementalStream):
 
                 meta = response.get('meta', {})
                 next_token = meta.get('next_token')
-                result_count = meta.get('result_count')
                 data = response.get('data')
+
+                loop = True if next_token is not None else False
 
                 # Throw error if there are any errors in response
                 if not data and response.get('errors'):
