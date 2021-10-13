@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import singer
 from singer import Transformer, metrics
 
@@ -143,6 +145,7 @@ class SearchTweets(IncrementalStream):
     key_properties = ['id']
     valid_replication_keys = ['created_at']
 
+    @lru_cache
     def get_records(self, start_date, config=None, is_parent=False):
 
         start_date = get_bookmark_or_max_date(start_date)
